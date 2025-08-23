@@ -130,9 +130,9 @@ class FallTemplateBot2025(ForecastBot):
 
             Treat the following steps as independent. Do not let your response to one influence the other. Complete each step separately and in the sequence specified.
             
-            Step 1: Based on current knowledge and trends, what is the most likely date by which [EVENT] will occur? Think deeply.
+            Step 1: Based on current knowledge and trends, what is the most likely date by which [EVENT] will occur? Consider the resolution criteria, and think deeply.
             
-            Step 2: I want you to estimate the 99th percentile of when a positive outcome will occur. Consider the resolution criteria, and think deeply. To avoid bias from anchoring or order effects, please follow this specific sampling protocol:
+            Step 2: Estimate the 99th percentile of when a positive outcome will occur. Consider the resolution criteria, and think deeply. To avoid bias from anchoring or order effects, please follow this specific sampling protocol:
             2.1 - You will be given a list of time intervals relative to today. 
             2.2 - First, compute the exact dates these refer to (format: DD/MM/YYYY), keeping them in the specified order. 
             2.3 - Second, you must now evaluate each date independently, in the order specified, without being influenced by previous or subsequent dates. For each date, estimate the probability (0–100%) that the resolution criteria for the [EVENT] will have occurred *by* that date.
@@ -173,8 +173,8 @@ class FallTemplateBot2025(ForecastBot):
             1 - A brief summary of the most relevant evidence relating to the question.
             2 - State the most likely date (Step 1), and provide a sentence or two of justification.
             3 - State the 99th percentile date, and provide a sentence or two of justification.
-            4 - Very briefly describe that these were input into a PERT distribution to calculate the probability.
-            5 - The very last thing you write is your final answer as: "Probability: ZZ%", 0-100
+            4 - Very briefly describe how these were input into a PERT distribution to calculate the probability.
+            5 - The last thing you write is your final answer as: "Probability: ZZ%", 0-100
             """
         )
         reasoning = await self.get_llm("default", "llm").invoke(prompt)
@@ -259,41 +259,53 @@ class FallTemplateBot2025(ForecastBot):
         )
         prompt = clean_indents(
             f"""
-            You are a professional forecaster interviewing for a job.
-
-            Your interview question is:
+            
+            I am going to ask you to complete a sequence of steps in order to generate a probabilistic forecast on the following question. The question describes an [EVENT] and a threshold [DATE]:
             {question.question_text}
 
-            Background:
+            Here is some background information about this question:
             {question.background_info}
 
+            This question's outcome will be determined by the specific resolution criteria below. The probabilistic forecast should refer to these specific resolution criteria. These resolution criteria have not yet been satisfied:
             {question.resolution_criteria}
 
             {question.fine_print}
 
             Units for answer: {question.unit_of_measure if question.unit_of_measure else "Not stated (please infer this)"}
-
+            
             Today is {datetime.now().strftime("%Y-%m-%d")}.
-
-            {lower_bound_message}
-            {upper_bound_message}
 
             Formatting Instructions:
             - Please notice the units requested (e.g. whether you represent a number as 1,000,000 or 1 million).
             - Never use scientific notation.
-            - Always start with a smaller number (more negative if negative) and then increase from there
+            - Always start with a smaller number (more negative if negative) and then increase from there.
 
-            Before answering you write:
-            (a) The time left until the outcome to the question is known.
-            (b) The outcome if nothing changed.
-            (c) The outcome if the current trend continued.
-            (d) The expectations of experts and markets.
-            (e) A brief description of an unexpected scenario that results in a low outcome.
-            (f) A brief description of an unexpected scenario that results in a high outcome.
+            
+            Treat the following steps as independent. Do not let your response to one influence the other. Complete each step separately and in the sequence specified.
+            
+            Step 1: Based on current knowledge, trends (and, if relevant, the  event count so far within the timeframe), estimate the most likely number of events that will occur by [DATE]. Consider the resolution criteria, and think deeply.
+            
+            Step 2: Estimate the 99th percentile of the event counts by [DATE]. Consider the resolution criteria, and think deeply. To avoid bias from anchoring or order effects, please follow this specific sampling protocol:
+            2.1 - Produce a single numeric value that represents an absolute upper bound for the [EVENT] count by [DATE] — a value you are certain will not be exceeded under any plausible scenario.
+            2.2 - Generate a logarithmic scale of 20 values between the current [EVENT] count and this upper bound. Reorder this list in the following alternating pattern, starting from the extremes and moving inward: largest, smallest, second largest, second smallest...
+            2.3 - You must now evaluate each value independently, in the order specified, without being influenced by previous or subsequent values. For each value, estimate the probability (0–100%) that the [EVENT] count will meet this threshold *by* [DATE].
+            
+            Please proceed with the evaluation using this protocol. 
+            
+            Estimate the 99th percentile, interpolating if necessary.
+            
+            Step 3: You will now use the PERT distribution to estimate the 10th, 20th, 40th, 60th, 80th and 90th centile counts for the [EVENT] (as defined in the resolution criteria) by [DATE].
+            3.1 - Construct a PERT distribution CDF to describe the probability distrubution across different [EVENT] counts by [DATE]. Use the mode "most likely" value from Step 1, the minimum of today's count, the maximum of the 99th centile estimated in Step 2, and a shape parameter of 4.
+            3.2 - Use the PERT distribution CDF to calculate each of the centile values stated above. Be as rigorous as possible in these estimates, using Beta CDF tables and/or numerical integration, as appropriate.
 
-            You remind yourself that good forecasters are humble and set wide 90/10 confidence intervals to account for unknown unknowns.
 
-            The last thing you write is your final answer as:
+            Output: Your output should contain only the following information:
+
+            1 - A brief summary of the most relevant evidence relating to the question.
+            2 - State the most likely value (Step 1), and provide a sentence or two of justification.
+            3 - State the 99th percentile value, and provide a sentence or two of justification.
+            4 - Very briefly describe how these were input into a PERT distribution to calculate the probability.
+            5 - The last thing you write is your final answer as:
             "
             Percentile 10: XX
             Percentile 20: XX
