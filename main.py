@@ -5,7 +5,6 @@ from datetime import datetime
 from typing import Literal
 
 from forecasting_tools import (
-    AskNewsSearcher,
     BinaryQuestion,
     ForecastBot,
     GeneralLlm,
@@ -106,99 +105,76 @@ class FallTemplateBot2025(ForecastBot):
     )
     _concurrency_limiter = asyncio.Semaphore(_max_concurrent_questions)
 
-    async def run_research(self, question: MetaculusQuestion) -> str:
-        async with self._concurrency_limiter:
-            research = ""
-            researcher = self.get_llm("researcher")
-
-            prompt = clean_indents(
-                f"""
-                You are an assistant to a superforecaster.
-                The superforecaster will give you a question they intend to forecast on.
-                To be a great assistant, you generate a concise but detailed rundown of the most relevant news, including if the question would resolve Yes or No based on current information.
-                You do not produce forecasts yourself.
-
-                Question:
-                {question.question_text}
-
-                This question's outcome will be determined by the specific criteria below:
-                {question.resolution_criteria}
-
-                {question.fine_print}
-                """
-            )
-
-            if isinstance(researcher, GeneralLlm):
-                research = await researcher.invoke(prompt)
-            elif researcher == "asknews/news-summaries":
-                research = await AskNewsSearcher().get_formatted_news_async(
-                    question.question_text
-                )
-            elif researcher == "asknews/deep-research/medium-depth":
-                research = await AskNewsSearcher().get_formatted_deep_research(
-                    question.question_text,
-                    sources=["asknews", "google"],
-                    search_depth=2,
-                    max_depth=4,
-                )
-            elif researcher == "asknews/deep-research/high-depth":
-                research = await AskNewsSearcher().get_formatted_deep_research(
-                    question.question_text,
-                    sources=["asknews", "google"],
-                    search_depth=4,
-                    max_depth=6,
-                )
-            elif researcher.startswith("smart-searcher"):
-                model_name = researcher.removeprefix("smart-searcher/")
-                searcher = SmartSearcher(
-                    model=model_name,
-                    temperature=0,
-                    num_searches_to_run=2,
-                    num_sites_per_search=10,
-                    use_advanced_filters=False,
-                )
-                research = await searcher.invoke(prompt)
-            elif not researcher or researcher == "None":
-                research = ""
-            else:
-                research = await self.get_llm("researcher", "llm").invoke(prompt)
-            logger.info(f"Found Research for URL {question.page_url}:\n{research}")
-            return research
+    async def run_research(self, question: MetaculusQuestion):
+        #Skip research entirely
+        return [""]
 
     async def _run_forecast_on_binary(
         self, question: BinaryQuestion, research: str
     ) -> ReasonedPrediction[float]:
         prompt = clean_indents(
             f"""
-            You are a professional forecaster interviewing for a job.
-
-            Your interview question is:
+            I am going to ask you to complete a sequence of steps in order to generate a probabilistic forecast on the following question. The question describes an [EVENT] and a threshold [DATE]:
             {question.question_text}
 
-            Question background:
+            Here is some background information about this question:
             {question.background_info}
 
-
-            This question's outcome will be determined by the specific criteria below. These criteria have not yet been satisfied:
+            This question's outcome will be determined by the specific resolution criteria below. The probabilistic forecast should refer to these specific resolution criteria. These resolution criteria have not yet been satisfied:
             {question.resolution_criteria}
 
             {question.fine_print}
 
-
-            Your research assistant says:
-            {research}
-
             Today is {datetime.now().strftime("%Y-%m-%d")}.
 
-            Before answering you write:
-            (a) The time left until the outcome to the question is known.
-            (b) The status quo outcome if nothing changed.
-            (c) A brief description of a scenario that results in a No outcome.
-            (d) A brief description of a scenario that results in a Yes outcome.
 
-            You write your rationale remembering that good forecasters put extra weight on the status quo outcome since the world changes slowly most of the time.
+            Treat the following steps as independent. Do not let your response to one influence the other. Complete each step separately and in the sequence specified.
+            
+            Step 1: Based on current knowledge and trends, what is the most likely date by which [EVENT] will occur? Think deeply.
+            
+            Step 2: I want you to estimate the 99th percentile of when a positive outcome will occur. Consider the resolution criteria, and think deeply. To avoid bias from anchoring or order effects, please follow this specific sampling protocol:
+            2.1 - You will be given a list of time intervals relative to today. 
+            2.2 - First, compute the exact dates these refer to (format: DD/MM/YYYY), keeping them in the specified order. 
+            2.3 - Second, you must now evaluate each date independently, in the order specified, without being influenced by previous or subsequent dates. For each date, estimate the probability (0–100%) that the resolution criteria for the [EVENT] will have occurred *by* that date.
+            
+            Here are the candidate dates (in DD/MM/YYYY format):
+            - tomorrow
+            - 100 years from now
+            - three days from now
+            - 90 years from now
+            - one week from now
+            - 70 years from now
+            - two weeks from now
+            - 50 years from now
+            - one month from now
+            - 30 years from now
+            - two monts from now
+            - 20 years from now
+            - three months from now
+            - 15 years from now
+            - six months from now
+            - 10 years from now
+            - one year from now
+            - five years from now
+            - two years from now
+            - three years from now
+            
+            Please proceed with the evaluation using this protocol. 
+            
+            Estimate the 99th percentile, interpolating if necessary.
+            
+            Step 3: Use the PERT distribution to calculate the probability of [EVENT] (as described in the resolution criteria) by [DATE]. 
+            Use the mode "most likely" date from Step 1, the minimum of today's date, the maximum of the 99th centile estimated in Step 2, and a shape parameter of 4.
+            Be as rigorous as possible in this estimate, using Beta CDF tables and/or numerical integration, as appropriate.
 
-            The last thing you write is your final answer as: "Probability: ZZ%", 0-100
+
+            Output: Your output should contain only the following information:
+
+            1 - A brief summary of the most relevant evidence relating to the question.
+            2 - State the most likely date (Step 1), and provide a sentence or two of justification.
+            3 - State the 99th percentile date, and provide a sentence or two of justification.
+            4 - Very briefly describe that these were input into a PERT distribution to calculate the probability.
+            5 - The very last thing you write is your final answer as: "Probability: ZZ%", 0-100
             """
         )
         reasoning = await self.get_llm("default", "llm").invoke(prompt)
@@ -206,7 +182,7 @@ class FallTemplateBot2025(ForecastBot):
         binary_prediction: BinaryPrediction = await structure_output(
             reasoning, BinaryPrediction, model=self.get_llm("parser", "llm")
         )
-        decimal_pred = max(0.01, min(0.99, binary_prediction.prediction_in_decimal))
+        decimal_pred = max(0.00, min(1.00, binary_prediction.prediction_in_decimal))
 
         logger.info(
             f"Forecasted URL {question.page_url} with prediction: {decimal_pred}"
@@ -296,9 +272,6 @@ class FallTemplateBot2025(ForecastBot):
             {question.fine_print}
 
             Units for answer: {question.unit_of_measure if question.unit_of_measure else "Not stated (please infer this)"}
-
-            Your research assistant says:
-            {research}
 
             Today is {datetime.now().strftime("%Y-%m-%d")}.
 
@@ -406,17 +379,17 @@ if __name__ == "__main__":
         publish_reports_to_metaculus=True,
         folder_to_save_reports_to=None,
         skip_previously_forecasted_questions=True,
-        # llms={  # choose your model names or GeneralLlm llms here, otherwise defaults will be chosen for you
-        #     "default": GeneralLlm(
-        #         model="openrouter/openai/gpt-4o", # "anthropic/claude-3-5-sonnet-20241022", etc (see docs for litellm)
+        llms={
+            # Default LLM for all roles
+             "default": GeneralLlm(model="openrouter/openai/gpt-5"),
         #         temperature=0.3,
         #         timeout=40,
         #         allowed_tries=2,
-        #     ),
+             
         #     "summarizer": "openai/gpt-4o-mini",
         #     "researcher": "asknews/deep-research/low",
         #     "parser": "openai/gpt-4o-mini",
-        # },
+        },
     )
 
     if run_mode == "tournament":
