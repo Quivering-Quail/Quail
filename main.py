@@ -101,7 +101,7 @@ class FallTemplateBot2025(ForecastBot):
             I am going to ask you to complete a sequence of steps in order to generate a probabilistic forecast on the following question. The question describes an [EVENT] and a threshold [DATE]:
             {question.question_text}
 
-            Here is some background information about this question:
+            Background information about this question:
             {question.background_info}
 
             This question's outcome will be determined by the specific resolution criteria below. The probabilistic forecast should refer to these specific resolution criteria. These resolution criteria have not yet been satisfied:
@@ -115,11 +115,11 @@ class FallTemplateBot2025(ForecastBot):
             Today is {datetime.now().strftime("%Y-%m-%d")}.
 
 
-            Treat the following steps as independent. Do not let your response to one influence the other. Complete each step separately and in the sequence specified.
+            Complete each of the following steps in the sequence specified.
             
             Step 1: Based on current knowledge and trends, what is the most likely date by which [EVENT] will occur? Consider the resolution criteria, and think deeply.
             
-            Step 2: Estimate the 99th percentile of when a positive outcome will occur. Consider the resolution criteria, and think deeply. To avoid bias from anchoring or order effects, please follow this specific sampling protocol:
+            Step 2: Complete this step independently of Step 1. To avoid bias from anchoring or order effects, please follow this specific sampling protocol. Treat each time interval independently, and think deeply on each one:
             2.1 - You will be given a list of time intervals relative to today. 
             2.2 - First, compute the exact dates these refer to (format: DD/MM/YYYY), keeping them in the specified order. 
             2.3 - Second, you must now evaluate each date independently, in the order specified, without being influenced by previous or subsequent dates. For each date, estimate the probability (0–100%) that the resolution criteria for the [EVENT] will have occurred *by* that date.
@@ -148,7 +148,7 @@ class FallTemplateBot2025(ForecastBot):
             
             Please proceed with the evaluation using this protocol. 
             
-            Estimate the 99th percentile, interpolating if necessary.
+            Once complete, estimate the 99th percentile, interpolating if necessary.
             
             Step 3: Use the PERT distribution to calculate the probability of [EVENT] (as described in the resolution criteria) by [DATE]. 
             Use the mode "most likely" date from Step 1, the minimum of today's date, the maximum of the 99th centile estimated in Step 2, and a shape parameter of 4.
@@ -181,35 +181,43 @@ class FallTemplateBot2025(ForecastBot):
     ) -> ReasonedPrediction[PredictedOptionList]:
         prompt = clean_indents(
             f"""
-            You are a professional forecaster interviewing for a job.
-
-            Your interview question is:
+            I am going to ask you to complete a sequence of steps in order to generate a probabilistic forecast on the following question:
             {question.question_text}
 
-            The options are: {question.options}
+            The categories that this question is forecasting across are: 
+            {question.options}
 
-
-            Background:
+            Background information about this question:
             {question.background_info}
 
+            This question's outcome will be determined by the specific resolution criteria below. The probabilistic forecasts should refer to these specific resolution criteria. These resolution criteria have not yet been satisfied:
             {question.resolution_criteria}
 
             {question.fine_print}
-
 
             Here is a summary of recent research relating to this question:
             {research}
 
             Today is {datetime.now().strftime("%Y-%m-%d")}.
 
-            Before answering you write:
-            (a) The time left until the outcome to the question is known.
-            (b) The status quo outcome if nothing changed.
-            (c) A description of an scenario that results in an unexpected outcome.
+            Complete each step separately and in the sequence specified.
+            
+            Step 1: Review the categories this question is forecasting over. If neccessary, decompose each category into simpler analytical categories to aid analysis in Step 2. Decomposition may not be required if the categories are already simple. Reasons to break categories down could include:
+            1 - More than one option is grouped in the same category (e.g. "X or Y", "1-10", "other"). Expand these into a set of no more than 20 decomposed categories (e.g. "X", "Y", "1-5", "6-10"). These must remain mutually exclusive and collectively exhaustive. 
+            2 - Categories contain plural events (e.g. "X and Y", "X and not Y", "not X"). Expand these into a list of all relevant conditional probabilities (e.g. "P(X|Y)", "P(X'|Y)", "P(X|Y')", "P(X'|Y')", "P(Y|X)"...).
+            
+            Step 2: Treat each analytical category identified in Step 1 independently, and estimate the probability of this outcome, with reference to the question and resolution criteria.
 
-            You write your rationale remembering that (1) good forecasters put extra weight on the status quo outcome since the world changes slowly most of the time, and (2) good forecasters leave some moderate probability on most options to account for unexpected outcomes.
+            Step 3: Aggregate the analytical categories back up into the original categories, using probability theory.
 
-            The last thing you write is your final probabilities for the N options in this order {question.options} as:
+            Step 4: If required, normalise the probabilities to ensure they sum to 1, by applying a scaling factor.
+
+
+            Output: Your output should contain only the following information (no more than 350 words total):
+
+            1 - A brief summary of the most relevant evidence relating to the question.
+            2 - Briefly describe the methodology followed.
+            3 - The last thing you write is your final probabilities for the N options in this order {question.options} as:
             Option_A: Probability_A
             Option_B: Probability_B
             ...
@@ -250,7 +258,7 @@ class FallTemplateBot2025(ForecastBot):
             I am going to ask you to complete a sequence of steps in order to generate a probabilistic forecast on the following question. The question describes an [EVENT] and a threshold [DATE]:
             {question.question_text}
 
-            Here is some background information about this question:
+            Background information about this question:
             {question.background_info}
 
             This question's outcome will be determined by the specific resolution criteria below. The probabilistic forecast should refer to these specific resolution criteria. These resolution criteria have not yet been satisfied:
@@ -271,21 +279,21 @@ class FallTemplateBot2025(ForecastBot):
             - Always start with a smaller number (more negative if negative) and then increase from there.
 
             
-            Treat the following steps as independent. Do not let your response to one influence the other. Complete each step separately and in the sequence specified.
+            Complete each of the following steps in the sequence specified.
             
             Step 1: Based on current knowledge, trends (and, if relevant, the  event count so far within the timeframe), estimate the most likely number of events that will occur by [DATE]. Consider the resolution criteria, and think deeply.
             
-            Step 2: Estimate the 99th percentile of the event counts by [DATE]. Consider the resolution criteria, and think deeply. To avoid bias from anchoring or order effects, please follow this specific sampling protocol:
+            Step 2: Complete this step independently of Step 1. Estimate the 99th percentile of the event counts by [DATE]. Consider the resolution criteria, and think deeply. To avoid bias from anchoring or order effects, please follow this specific sampling protocol:
             2.1 - Produce a single numeric value that represents an absolute upper bound for the [EVENT] count by [DATE] — a value you are certain will not be exceeded under any plausible scenario.
             2.2 - Generate a logarithmic scale of 20 values between the current [EVENT] count and this upper bound. Reorder this list in the following alternating pattern, starting from the extremes and moving inward: largest, smallest, second largest, second smallest...
             2.3 - You must now evaluate each value independently, in the order specified, without being influenced by previous or subsequent values. For each value, estimate the probability (0–100%) that the [EVENT] count will meet this threshold *by* [DATE].
             
             Please proceed with the evaluation using this protocol. 
             
-            Estimate the 99th percentile, interpolating if necessary.
+            Once complete, estimate the 99th percentile, interpolating if necessary.
             
             Step 3: You will now use the PERT distribution to estimate the 10th, 20th, 40th, 60th, 80th and 90th centile counts for the [EVENT] (as defined in the resolution criteria) by [DATE].
-            3.1 - Construct a PERT distribution CDF to describe the probability distrubution across different [EVENT] counts by [DATE]. Use the mode "most likely" value from Step 1, the minimum of today's count, the maximum of the 99th centile estimated in Step 2, and a shape parameter of 4.
+            3.1 - Construct a PERT distribution CDF to describe the probability distrubution across different [EVENT] counts by [DATE]. Use the mode "most likely" value from Step 1, the minimum of the current count within the question timeframe, the maximum of the 99th centile estimated in Step 2, and a shape parameter of 4.
             3.2 - Use the PERT distribution CDF to calculate each of the centile values stated above. Be as rigorous as possible in these estimates, using Beta CDF tables and/or numerical integration, as appropriate.
 
 
