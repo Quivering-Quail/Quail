@@ -5,6 +5,7 @@ from datetime import datetime
 from typing import Literal
 
 from forecasting_tools import (
+    AskNewsSearcher,
     BinaryQuestion,
     ForecastBot,
     GeneralLlm,
@@ -26,79 +27,6 @@ logger = logging.getLogger(__name__)
 
 
 class FallTemplateBot2025(ForecastBot):
-    """
-    This is a copy of the template bot for Fall 2025 Metaculus AI Tournament.
-    This bot is what is used by Metaculus in our benchmark, but is also provided as a template for new bot makers.
-    This template is given as-is, and though we have covered most test cases
-    in forecasting-tools it may be worth double checking key components locally.
-
-    Main changes since Q2:
-    - An LLM now parses the final forecast output (rather than programmatic parsing)
-    - Added resolution criteria and fine print explicitly to the research prompt
-    - Previously in the prompt, nothing about upper/lower bound was shown when the bounds were open. Now a suggestion is made when this is the case.
-    - Support for nominal bounds was added (i.e. when there are discrete questions and normal upper/lower bounds are not as intuitive)
-
-    The main entry point of this bot is `forecast_on_tournament` in the parent class.
-    See the script at the bottom of the file for more details on how to run the bot.
-    Ignoring the finer details, the general flow is:
-    - Load questions from Metaculus
-    - For each question
-        - Execute run_research a number of times equal to research_reports_per_question
-        - Execute respective run_forecast function `predictions_per_research_report * research_reports_per_question` times
-        - Aggregate the predictions
-        - Submit prediction (if publish_reports_to_metaculus is True)
-    - Return a list of ForecastReport objects
-
-    Only the research and forecast functions need to be implemented in ForecastBot subclasses,
-    though you may want to override other ones.
-    In this example, you can change the prompts to be whatever you want since,
-    structure_output uses an LLMto intelligently reformat the output into the needed structure.
-
-    By default (i.e. 'tournament' mode), when you run this script, it will forecast on any open questions for the
-    MiniBench and Seasonal AIB tournaments. If you want to forecast on only one or the other, you can remove one
-    of them from the 'tournament' mode code at the bottom of the file.
-
-    You can experiment with what models work best with your bot by using the `llms` parameter when initializing the bot.
-    You can initialize the bot with any number of models. For example,
-    ```python
-    my_bot = MyBot(
-        ...
-        llms={  # choose your model names or GeneralLlm llms here, otherwise defaults will be chosen for you
-            "default": GeneralLlm(
-                model="openrouter/openai/gpt-4o", # "anthropic/claude-3-5-sonnet-20241022", etc (see docs for litellm)
-                temperature=0.3,
-                timeout=40,
-                allowed_tries=2,
-            ),
-            "summarizer": "openai/gpt-4o-mini",
-            "researcher": "asknews/deep-research/low",
-            "parser": "openai/gpt-4o-mini",
-        },
-    )
-    ```
-
-    Then you can access the model in custom functions like this:
-    ```python
-    research_strategy = self.get_llm("researcher", "model_name"
-    if research_strategy == "asknews/deep-research/low":
-        ...
-    # OR
-    summarizer = await self.get_llm("summarizer", "model_name").invoke(prompt)
-    # OR
-    reasoning = await self.get_llm("default", "llm").invoke(prompt)
-    ```
-
-    If you end up having trouble with rate limits and want to try a more sophisticated rate limiter try:
-    ```python
-    from forecasting_tools import RefreshingBucketRateLimiter
-    rate_limiter = RefreshingBucketRateLimiter(
-        capacity=2,
-        refresh_rate=1,
-    ) # Allows 1 request per second on average with a burst of 2 requests initially. Set this as a class variable
-    await self.rate_limiter.wait_till_able_to_acquire_resources(1) # 1 because it's consuming 1 request (use more if you are adding a token limit)
-    ```
-    Additionally OpenRouter has large rate limits immediately on account creation
-    """
 
     _max_concurrent_questions = (
         1  # Set this to whatever works for your search-provider/ai-model rate limits
@@ -114,7 +42,7 @@ class FallTemplateBot2025(ForecastBot):
                 f"""
                 You are an assistant to a superforecaster.
                 The superforecaster will give you a question they intend to forecast on.
-                To be a great assistant, you generate a concise but detailed rundown of the most relevant news, including if the question would resolve Yes or No based on current information.
+                To be a great assistant, you generate a concise but detailed summary of the most relevant news from the last year, with a particular focus on more recent news.
                 You do not produce forecasts yourself.
 
                 Question:
@@ -180,7 +108,10 @@ class FallTemplateBot2025(ForecastBot):
             {question.resolution_criteria}
 
             {question.fine_print}
-
+            
+            Here is a summary of recent research relating to this question:
+            {research}
+            
             Today is {datetime.now().strftime("%Y-%m-%d")}.
 
 
@@ -224,12 +155,12 @@ class FallTemplateBot2025(ForecastBot):
             Be as rigorous as possible in this estimate, using Beta CDF tables and/or numerical integration, as appropriate.
 
 
-            Output: Your output should contain only the following information:
+            Output: Your output should contain only the following information (no more than 350 words total):
 
-            1 - A brief summary of the most relevant evidence relating to the question.
+            1 - A very brief summary of the most relevant evidence relating to the question.
             2 - State the most likely date (Step 1), and provide a sentence or two of justification.
             3 - State the 99th percentile date, and provide a sentence or two of justification.
-            4 - Very briefly describe how these were input into a PERT distribution to calculate the probability.
+            4 - Very briefly describe that you used a statistical method to calculate a probability density function from which you computed the probability. Don't specifically mention PERT.
             5 - The last thing you write is your final answer as: "Probability: ZZ%", 0-100
             """
         )
@@ -266,7 +197,7 @@ class FallTemplateBot2025(ForecastBot):
             {question.fine_print}
 
 
-            Your research assistant says:
+            Here is a summary of recent research relating to this question:
             {research}
 
             Today is {datetime.now().strftime("%Y-%m-%d")}.
@@ -329,6 +260,9 @@ class FallTemplateBot2025(ForecastBot):
 
             Units for answer: {question.unit_of_measure if question.unit_of_measure else "Not stated (please infer this)"}
             
+            Here is a summary of recent research relating to this question:
+            {research}
+            
             Today is {datetime.now().strftime("%Y-%m-%d")}.
 
             Formatting Instructions:
@@ -355,12 +289,12 @@ class FallTemplateBot2025(ForecastBot):
             3.2 - Use the PERT distribution CDF to calculate each of the centile values stated above. Be as rigorous as possible in these estimates, using Beta CDF tables and/or numerical integration, as appropriate.
 
 
-            Output: Your output should contain only the following information:
+            Output: Your output should contain only the following information (no more than 350 words total):
 
             1 - A brief summary of the most relevant evidence relating to the question.
             2 - State the most likely value (Step 1), and provide a sentence or two of justification.
             3 - State the 99th percentile value, and provide a sentence or two of justification.
-            4 - Very briefly describe how these were input into a PERT distribution to calculate the probability.
+            4 - Very briefly describe that you used a statistical method to calculate a probability density function from which you computed the probability. Don't specifically mention PERT.
             5 - The last thing you write is your final answer as:
             "
             Percentile 10: XX
@@ -442,7 +376,7 @@ if __name__ == "__main__":
 
     template_bot = FallTemplateBot2025(
         research_reports_per_question=1,
-        predictions_per_research_report=5,
+        predictions_per_research_report=1,
         use_research_summary_to_forecast=False,
         publish_reports_to_metaculus=True,
         folder_to_save_reports_to=None,
@@ -455,7 +389,7 @@ if __name__ == "__main__":
         #         allowed_tries=2,
              
         #     "summarizer": "openai/gpt-4o-mini",
-        #     "researcher": "asknews/deep-research/low",
+             "researcher": "asknews/deep-research/low",
         #     "parser": "openai/gpt-4o-mini",
         },
     )
