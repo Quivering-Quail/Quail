@@ -40,17 +40,19 @@ class FallTemplateBot2025(ForecastBot):
 
             prompt = clean_indents(
                 f"""
-                You are an assistant to a superforecaster.
-                The superforecaster will give you a question they intend to forecast on.
-                To be a great assistant, you generate a concise but detailed summary of the most relevant news from the last year, with a particular focus on more recent news.
-                You do not produce forecasts yourself.
+                You are a research assistant to a superforecaster.
+                
+                Your task is to generate a concise, well-organized summary of the most relevant news from the **past year**, with emphasis on the **most recent developments**. 
+                Focus only on information that may help the forecaster assess this question.
+                Do not make forecasts or offer opinions.
 
                 Question:
                 {question.question_text}
 
-                This question's outcome will be determined by the specific criteria below:
+                Resolution criteria:
                 {question.resolution_criteria}
 
+                Additional notes:
                 {question.fine_print}
                 """
             )
