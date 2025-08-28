@@ -40,20 +40,32 @@ class FallTemplateBot2025(ForecastBot):
 
             prompt = clean_indents(
                 f"""
-                You are a research assistant to a superforecaster.
+                You are a research assistant supporting a superforecaster.  
+                Your task is to gather relevant information to inform a forecast on the question below.  
+                Do **not** make predictions or express opinions.            
                 
-                Your task is to generate a concise, well-organized summary of the most relevant news from the **past year**, with emphasis on the **most recent developments**. 
-                Focus only on information that may help the forecaster assess this question.
-                Do not make forecasts or offer opinions.
-
-                Question:
+                ---
+                
+                **Question:**  
                 {question.question_text}
-
-                Resolution criteria:
+                
+                **Resolution Criteria:**  
                 {question.resolution_criteria}
-
-                Additional notes:
+                
+                **Additional Notes:**  
                 {question.fine_print}
+                
+                ---
+                
+                Approach this question from **five distinct angles**, with minimal overlap:
+                
+                1. **Focused:** Specific events, entities or people directly related to the question  
+                2. **Broad:** General trends, patterns and context in the relevant domain  
+                3. **Forward-looking:** Projections, anticipated developments, or upcoming events  
+                4. **Drivers & Indicators:** Policies, funding shifts, macro factors, early signals or underlying dynamics  
+                5. **Methodology:** How resolution-related data is defined, tracked, or reported for resolution
+                
+                Prioritize coverage from the **past 18 months**, especially the **most recent** developments.         
                 """
             )
 
@@ -410,14 +422,14 @@ if __name__ == "__main__":
         skip_previously_forecasted_questions=True,
         llms={
             # Default LLM for all roles
-             "default": GeneralLlm(model="openrouter/openai/gpt-5"),
+             "default": GeneralLlm(model="openrouter/openai/gpt-5", 
+                timeout=40,
+                allowed_tries=2),
         #         temperature=0.3,
-        #         timeout=40,
-        #         allowed_tries=2,
-             
-        #     "summarizer": "openai/gpt-4o-mini",
-             "researcher": "asknews/deep-research/low",
-        #     "parser": "openai/gpt-4o-mini",
+                
+             "summarizer": "openai/gpt-4o-mini",
+             "researcher": "asknews/deep-research/medium-depth",
+             "parser": "openai/gpt-4o-mini",
         },
     )
 
