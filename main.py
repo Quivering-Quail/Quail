@@ -1,7 +1,9 @@
 import argparse
 import asyncio
 import logging
-from datetime import datetime
+import random
+from datetime import datetime, timedelta
+from dateutil.relativedelta import relativedelta
 from typing import Literal
 
 from forecasting_tools import (
@@ -33,6 +35,31 @@ class FallTemplateBot2025(ForecastBot):
     )
     _concurrency_limiter = asyncio.Semaphore(_max_concurrent_questions)
 
+    def generate_candidate_dates(today: datetime) -> list[tuple[str, datetime]]:
+    offsets = [
+        ("tomorrow", timedelta(days=1)),
+        ("three days from now", timedelta(days=3)),
+        ("one week from now", timedelta(weeks=1)),
+        ("two weeks from now", timedelta(weeks=2)),
+        ("one month from now", relativedelta(months=1)),
+        ("two months from now", relativedelta(months=2)),
+        ("three months from now", relativedelta(months=3)),
+        ("six months from now", relativedelta(months=6)),
+        ("one year from now", relativedelta(years=1)),
+        ("two years from now", relativedelta(years=2)),
+        ("three years from now", relativedelta(years=3)),
+        ("five years from now", relativedelta(years=5)),
+        ("10 years from now", relativedelta(years=10)),
+        ("15 years from now", relativedelta(years=15)),
+        ("20 years from now", relativedelta(years=20)),
+        ("30 years from now", relativedelta(years=30)),
+        ("50 years from now", relativedelta(years=50)),
+        ("70 years from now", relativedelta(years=70)),
+        ("90 years from now", relativedelta(years=90)),
+        ("100 years from now", relativedelta(years=100)),
+    ]
+    return [(label, today + offset) for label, offset in offsets]
+    
     async def run_research(self, question: MetaculusQuestion) -> str:
         async with self._concurrency_limiter:
             research = ""
@@ -90,7 +117,7 @@ class FallTemplateBot2025(ForecastBot):
                     max_depth=6,
                 )
             elif researcher.startswith("smart-searcher"):
-                model_name = researcher.removeprefix("smart-searcher/")
+                model_name = researcher.replace("smart-searcher/", "", 1)
                 searcher = SmartSearcher(
                     model=model_name,
                     temperature=0,
@@ -110,6 +137,12 @@ class FallTemplateBot2025(ForecastBot):
     async def _run_forecast_on_binary(
         self, question: BinaryQuestion, research: str
     ) -> ReasonedPrediction[float]:
+
+        candidates = generate_candidate_dates(datetime.now())
+        candidate_table = "\n".join(
+        f"- {label}: {date.strftime('%Y-%m-%d')}" for label, date in candidates
+        )
+        
         prompt = clean_indents(
             f"""
             You are asked to generate a probabilistic forecast for the following question involving an [EVENT] and a threshold date of [DATE]:
@@ -137,32 +170,11 @@ class FallTemplateBot2025(ForecastBot):
             Based on current knowledge and trends, estimate the **most likely date** the [EVENT] will occur. Refer to the resolution criteria.
             
             **Step 2: 99th Percentile Estimation Protocol**
-            Estimate the **99th percentile** date by evaluating a set of candidate time points, using the following structured approach:
-            - 2.1: You are given relative time intervals.  
-            - 2.2: Convert each to an exact date (DD/MM/YYYY), in the order listed.  
-            - 2.3: Evaluate each date independently. For each, estimate the probability (0–100%) that the event will have occurred by that date, based on the resolution criteria.
+            Estimate the **99th percentile** date by evaluating a set of candidate time points.
+            For each date, independently estimate the probability (0–100%) that the [EVENT] will have occurred by that date, based on the resolution criteria.
 
             Candidate dates:
-            - tomorrow
-            - 100 years from now
-            - three days from now
-            - 90 years from now
-            - one week from now
-            - 70 years from now
-            - two weeks from now
-            - 50 years from now
-            - one month from now
-            - 30 years from now
-            - two monts from now
-            - 20 years from now
-            - three months from now
-            - 15 years from now
-            - six months from now
-            - 10 years from now
-            - one year from now
-            - five years from now
-            - two years from now
-            - three years from now
+            {candidate_table}
             
             After assigning probabilities, interpolate as needed to estimate the 99th percentile date.
             
@@ -227,7 +239,7 @@ class FallTemplateBot2025(ForecastBot):
             Base your reasoning on current data, trends, and the resolution criteria. Be precise and thoughtful.
             
             **Step 1: Decompose categories (if needed)**
-            Review the forecast categories. If any are compound or ambiguous, break them into simpler, mutually exclusive, and collectively exhaustive analytical categories (max 20). Reasons to decompose may include:
+            Review the forecast categories. If any are compound or ambiguous, break them into simpler, mutually exclusive, and collectively exhaustive analytical categories. Reasons to decompose may include:
             - A category groups multiple outcomes (e.g. “X or Y”, “1–10”)  
             - A category involves joint or conditional structure (e.g. “X and Y”, “not X”) — in this case, list relevant conditionals (e.g. P(X|Y), P(X’|Y), etc.)
 
@@ -277,9 +289,7 @@ class FallTemplateBot2025(ForecastBot):
     async def _run_forecast_on_numeric(
         self, question: NumericQuestion, research: str
     ) -> ReasonedPrediction[NumericDistribution]:
-        upper_bound_message, lower_bound_message = (
-            self._create_upper_and_lower_bound_messages(question)
-        )
+
         prompt = clean_indents(
             f"""
             You are asked to produce a probabilistic forecast for the following question, which concerns an [EVENT] and a threshold date of [DATE]:
@@ -316,7 +326,7 @@ class FallTemplateBot2025(ForecastBot):
             
             **Step 2: Estimate the 99th Percentile**
             Estimate the 99th percentile of [EVENT] counts by [DATE], using the following structured protocol to reduce bias:
-            - 2.1: Identify a conservative upper bound—a number you are certain the count will not exceed in any realistic scenario.
+            - 2.1: Identify a conservative upper bound — a number you are certain the count will not exceed in any realistic scenario.
             - 2.2: Generate a logarithmic scale of 20 values between the current count and the upper bound. Reorder these values in this sequence: largest, smallest, second largest, second smallest, etc.
             - 2.3: For each value, in this exact order, independently estimate the probability (0–100%) that the [EVENT] count will reach or exceed that number by [DATE].
             After completing these evaluations, interpolate to estimate the 99th percentile value.
@@ -355,34 +365,6 @@ class FallTemplateBot2025(ForecastBot):
             f"Forecasted URL {question.page_url} with prediction: {prediction.declared_percentiles}"
         )
         return ReasonedPrediction(prediction_value=prediction, reasoning=reasoning)
-
-    def _create_upper_and_lower_bound_messages(
-        self, question: NumericQuestion
-    ) -> tuple[str, str]:
-        if question.nominal_upper_bound is not None:
-            upper_bound_number = question.nominal_upper_bound
-        else:
-            upper_bound_number = question.upper_bound
-        if question.nominal_lower_bound is not None:
-            lower_bound_number = question.nominal_lower_bound
-        else:
-            lower_bound_number = question.lower_bound
-
-        if question.open_upper_bound:
-            upper_bound_message = f"The question creator thinks the number is likely not higher than {upper_bound_number}."
-        else:
-            upper_bound_message = (
-                f"The outcome can not be higher than {upper_bound_number}."
-            )
-
-        if question.open_lower_bound:
-            lower_bound_message = f"The question creator thinks the number is likely not lower than {lower_bound_number}."
-        else:
-            lower_bound_message = (
-                f"The outcome can not be lower than {lower_bound_number}."
-            )
-        return upper_bound_message, lower_bound_message
-
 
 if __name__ == "__main__":
     logging.basicConfig(
