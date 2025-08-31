@@ -63,6 +63,9 @@ class FallTemplateBot2025(ForecastBot):
     
     async def run_research(self, question: MetaculusQuestion) -> str:
         async with self._concurrency_limiter:
+            AskNews_research = ""
+            default_research = ""
+            research = ""
             default_researcher = self.get_llm("default")
             summarizer = self.get_llm("summarizer")
 
