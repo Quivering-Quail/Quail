@@ -36,36 +36,33 @@ class FallTemplateBot2025(ForecastBot):
     _concurrency_limiter = asyncio.Semaphore(_max_concurrent_questions)
 
     def generate_candidate_dates(today: datetime) -> list[tuple[str, datetime]]:
-    offsets = [
-        ("tomorrow", timedelta(days=1)),
-        ("three days from now", timedelta(days=3)),
-        ("one week from now", timedelta(weeks=1)),
-        ("two weeks from now", timedelta(weeks=2)),
-        ("one month from now", relativedelta(months=1)),
-        ("two months from now", relativedelta(months=2)),
-        ("three months from now", relativedelta(months=3)),
-        ("six months from now", relativedelta(months=6)),
-        ("one year from now", relativedelta(years=1)),
-        ("two years from now", relativedelta(years=2)),
-        ("three years from now", relativedelta(years=3)),
-        ("five years from now", relativedelta(years=5)),
-        ("10 years from now", relativedelta(years=10)),
-        ("15 years from now", relativedelta(years=15)),
-        ("20 years from now", relativedelta(years=20)),
-        ("30 years from now", relativedelta(years=30)),
-        ("50 years from now", relativedelta(years=50)),
-        ("70 years from now", relativedelta(years=70)),
-        ("90 years from now", relativedelta(years=90)),
-        ("100 years from now", relativedelta(years=100)),
-    ]
-    return [(label, today + offset) for label, offset in offsets]
+        offsets = [
+            ("tomorrow", timedelta(days=1)),
+            ("three days from now", timedelta(days=3)),
+            ("one week from now", timedelta(weeks=1)),
+            ("two weeks from now", timedelta(weeks=2)),
+            ("one month from now", relativedelta(months=1)),
+            ("two months from now", relativedelta(months=2)),
+            ("three months from now", relativedelta(months=3)),
+            ("six months from now", relativedelta(months=6)),
+            ("one year from now", relativedelta(years=1)),
+            ("two years from now", relativedelta(years=2)),
+            ("three years from now", relativedelta(years=3)),
+            ("five years from now", relativedelta(years=5)),
+            ("10 years from now", relativedelta(years=10)),
+            ("15 years from now", relativedelta(years=15)),
+            ("20 years from now", relativedelta(years=20)),
+            ("30 years from now", relativedelta(years=30)),
+            ("50 years from now", relativedelta(years=50)),
+            ("70 years from now", relativedelta(years=70)),
+            ("90 years from now", relativedelta(years=90)),
+            ("100 years from now", relativedelta(years=100)),
+        ]
+        return [(label, today + offset) for label, offset in offsets]
 
     
     async def run_research(self, question: MetaculusQuestion) -> str:
         async with self._concurrency_limiter:
-            AskNews_research = ""
-            default_research = ""
-            AskNews_researcher = self.get_llm("researcher")
             default_researcher = self.get_llm("default")
             summarizer = self.get_llm("summarizer")
 
@@ -99,8 +96,8 @@ class FallTemplateBot2025(ForecastBot):
                 Prioritize coverage from the **past 18 months**, especially the **most recent** developments.         
                 """
             )
-
-              summarizer_prompt = clean_indents(
+            
+            summarizer_prompt = clean_indents(
                 f"""
                 You are an expert research assistant supporting a superforecaster. 
                 Your role is to process a large body of research and produce a summary that best informs forecasting on the following question. 
@@ -122,21 +119,27 @@ class FallTemplateBot2025(ForecastBot):
                 - Flag notable gaps, limitations, or potential biases in the research base.  
                 - Present the output in structured sections (e.g., *Key Findings*, *Supporting Evidence*, *Counterarguments*, *Research Gaps*).  
                 - Your synthesis should be approximately 300-500 words and distil the most decision-relevant insights for a forecaster.  
+
+                The News research is as follows:
+                {AskNews_research}
+
+                The general research is as follows:
+                {default_research}
             """
             )
                                   
             AskNews_research = await AskNewsSearcher().get_formatted_deep_research(
-                question.question_text,
+                research_prompt,
                 sources=["asknews", "google"],
                 search_depth=2,
                 max_depth=4,
             )
-            logger.info(f"Found AskNews research for {question.page_url}:\n{research}")            
+            logger.info(f"Found AskNews research for {question.page_url}:\n{AskNews_research}")            
                                  
-            default_research = await researcher.invoke(prompt)
-            logger.info(f"Found default research for {question.page_url}:\n{research}")         
+            default_research = await default_researcher.invoke(research_prompt)
+            logger.info(f"Found default research for {question.page_url}:\n{default_research}")         
             
-            research = await summarizer.invoke(prompt)
+            research = await summarizer.invoke(summarizer_prompt)
             
             return research
 
@@ -145,7 +148,7 @@ class FallTemplateBot2025(ForecastBot):
         self, question: BinaryQuestion, research: str
     ) -> ReasonedPrediction[float]:
 
-        candidates = generate_candidate_dates(datetime.now())
+        candidates = self.generate_candidate_dates(datetime.now())
         candidate_table = "\n".join(
         f"- {label}: {date.strftime('%Y-%m-%d')}" for label, date in candidates
         )
