@@ -147,9 +147,9 @@ class FallTemplateBot2025(ForecastBot):
                     ],
                 model="meta-llama/Llama-4-Maverick-17B-128E-Instruct",
                 stream=True,
-                search_depth=2,
+                #search_depth=2,
                 #sources=["asknews"],
-                max_depth=2,
+                #max_depth=2,
                 )
 
             #asknews_research = await AskNewsSearcher().get_formatted_deep_research(
