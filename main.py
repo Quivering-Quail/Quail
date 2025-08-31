@@ -423,7 +423,7 @@ if __name__ == "__main__":
         #         temperature=0.3,
                 
              "summarizer": "openrouter/openai/gpt-4o-mini",
-             "researcher": "asknews/deep-research/medium-depth",
+             "researcher": "asknews/deep-research/deepseek-basic",
              "parser": "openrouter/openai/gpt-4o-mini",
         },
     )
