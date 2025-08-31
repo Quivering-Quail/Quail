@@ -36,7 +36,7 @@ class FallTemplateBot2025(ForecastBot):
     )
     _concurrency_limiter = asyncio.Semaphore(_max_concurrent_questions)
 
-    def generate_candidate_dates(today: datetime) -> list[tuple[str, datetime]]:
+    async def generate_candidate_dates(self, today: datetime) -> list[tuple[str, datetime]]:
         offsets = [
             ("tomorrow", timedelta(days=1)),
             ("three days from now", timedelta(days=3)),
