@@ -31,7 +31,7 @@ logger = logging.getLogger(__name__)
 class FallTemplateBot2025(ForecastBot):
 
     _max_concurrent_questions = (
-        1  # Set this to whatever works for your search-provider/ai-model rate limits
+        1
     )
     _concurrency_limiter = asyncio.Semaphore(_max_concurrent_questions)
 
@@ -59,13 +59,17 @@ class FallTemplateBot2025(ForecastBot):
         ("100 years from now", relativedelta(years=100)),
     ]
     return [(label, today + offset) for label, offset in offsets]
+
     
     async def run_research(self, question: MetaculusQuestion) -> str:
         async with self._concurrency_limiter:
-            research = ""
-            researcher = self.get_llm("researcher")
+            AskNews_research = ""
+            default_research = ""
+            AskNews_researcher = self.get_llm("researcher")
+            default_researcher = self.get_llm("default")
+            summarizer = self.get_llm("summarizer")
 
-            prompt = clean_indents(
+            research_prompt = clean_indents(
                 f"""
                 You are a research assistant supporting a superforecaster.  
                 Your task is to gather relevant information to inform a forecast on the question below.  
@@ -84,7 +88,7 @@ class FallTemplateBot2025(ForecastBot):
                 
                 ---
                 
-                Approach this question from **five distinct angles**, with minimal overlap:
+                Approach this research question from **five distinct angles**, with minimal overlap:
                 
                 1. **Focused:** Specific events, entities or people directly related to the question  
                 2. **Broad:** General trends, patterns and context in the relevant domain  
@@ -96,41 +100,44 @@ class FallTemplateBot2025(ForecastBot):
                 """
             )
 
-            if isinstance(researcher, GeneralLlm):
-                research = await researcher.invoke(prompt)
-            elif researcher == "asknews/news-summaries":
-                research = await AskNewsSearcher().get_formatted_news_async(
-                    question.question_text
-                )
-            elif researcher == "asknews/deep-research/medium-depth":
-                research = await AskNewsSearcher().get_formatted_deep_research(
-                    question.question_text,
-                    sources=["asknews", "google"],
-                    search_depth=2,
-                    max_depth=4,
-                )
-            elif researcher == "asknews/deep-research/high-depth":
-                research = await AskNewsSearcher().get_formatted_deep_research(
-                    question.question_text,
-                    sources=["asknews", "google"],
-                    search_depth=4,
-                    max_depth=6,
-                )
-            elif researcher.startswith("smart-searcher"):
-                model_name = researcher.replace("smart-searcher/", "", 1)
-                searcher = SmartSearcher(
-                    model=model_name,
-                    temperature=0,
-                    num_searches_to_run=2,
-                    num_sites_per_search=10,
-                    use_advanced_filters=False,
-                )
-                research = await searcher.invoke(prompt)
-            elif not researcher or researcher == "None":
-                research = ""
-            else:
-                research = await self.get_llm("researcher", "llm").invoke(prompt)
-            logger.info(f"Found Research for URL {question.page_url}:\n{research}")
+              summarizer_prompt = clean_indents(
+                f"""
+                You are an expert research assistant supporting a superforecaster. 
+                Your role is to process a large body of research and produce a summary that best informs forecasting on the following question. 
+                You must never make forecasts yourself — only extract and organize relevant information.
+                
+                **Forecasting Question:**  
+                {question.question_text}
+                
+                **Resolution Criteria:**  
+                {question.resolution_criteria}
+                
+                **Additional Notes:**  
+                {question.fine_print}
+                
+                ### Instructions:
+                - Extract only the findings, arguments, and evidence that directly inform the forecasting question.  
+                - Omit extraneous detail, tangential discussion, and repetition.  
+                - Identify areas of consensus, points of disagreement, and key uncertainties.  
+                - Flag notable gaps, limitations, or potential biases in the research base.  
+                - Present the output in structured sections (e.g., *Key Findings*, *Supporting Evidence*, *Counterarguments*, *Research Gaps*).  
+                - Your synthesis should be approximately 300-500 words and distil the most decision-relevant insights for a forecaster.  
+            """
+            )
+                                  
+            AskNews_research = await AskNewsSearcher().get_formatted_deep_research(
+                question.question_text,
+                sources=["asknews", "google"],
+                search_depth=2,
+                max_depth=4,
+            )
+            logger.info(f"Found AskNews research for {question.page_url}:\n{research}")            
+                                 
+            default_research = await researcher.invoke(prompt)
+            logger.info(f"Found default research for {question.page_url}:\n{research}")         
+            
+            research = await summarizer.invoke(prompt)
+            
             return research
 
 
@@ -409,9 +416,9 @@ if __name__ == "__main__":
                 allowed_tries=2),
         #         temperature=0.3,
                 
-             "summarizer": "openai/gpt-4o-mini",
+             "summarizer": "openrouter/openai/gpt-4o-mini",
              "researcher": "asknews/deep-research/medium-depth",
-             "parser": "openai/gpt-4o-mini",
+             "parser": "openrouter/openai/gpt-4o-mini",
         },
     )
 
