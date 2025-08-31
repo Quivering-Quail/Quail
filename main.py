@@ -67,8 +67,6 @@ class FallTemplateBot2025(ForecastBot):
             asknews_research = ""
             default_research = ""
             research = ""
-            default_researcher = self.get_llm("default")
-            summarizer = self.get_llm("summarizer")
 
             research_prompt = clean_indents(
                 f"""
@@ -157,10 +155,10 @@ class FallTemplateBot2025(ForecastBot):
             #)
             #logger.info(f"Found AskNews research for {question.page_url}:\n{asknews_research}")            
                                  
-            default_research = await default_researcher.invoke(research_prompt)
+            default_research = await self.get_llm("default", "llm").invoke(research_prompt)
             logger.info(f"Found default research for {question.page_url}:\n{default_research}")         
             
-            research = await summarizer.invoke(summarizer_prompt)
+            research = await self.get_llm("summarizer","llm").invoke(summarizer_prompt)
             
             return research
 
