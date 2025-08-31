@@ -140,10 +140,11 @@ class FallTemplateBot2025(ForecastBot):
                 )
             asknews_research = await sdk.chat.get_deep_news(
                 messages=[
-                {
-                "content": research_prompt
-                }
-                ],
+                    {
+                    "role":"user",
+                    "content": research_prompt
+                    }
+                    ],
                 model="meta-llama/Llama-4-Maverick-17B-128E-Instruct",
                 stream=True,
                 search_depth=2,
