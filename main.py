@@ -150,7 +150,6 @@ class FallTemplateBot2025(ForecastBot):
                 search_depth=2,
                 sources=["asknews"],
                 max_depth=2,
-                return_sources=True
                 )
 
             #asknews_research = await AskNewsSearcher().get_formatted_deep_research(
