@@ -63,7 +63,7 @@ class FallTemplateBot2025(ForecastBot):
     
     async def run_research(self, question: MetaculusQuestion) -> str:
         async with self._concurrency_limiter:
-            AskNews_research = ""
+            asknews_research = ""
             default_research = ""
             research = ""
             default_researcher = self.get_llm("default")
@@ -124,20 +124,20 @@ class FallTemplateBot2025(ForecastBot):
                 - Your synthesis should be approximately 300-500 words and distil the most decision-relevant insights for a forecaster.  
 
                 The News research is as follows:
-                {AskNews_research}
+                {asknews_research}
 
                 The general research is as follows:
                 {default_research}
             """
             )
                                   
-            AskNews_research = await AskNewsSearcher().get_formatted_deep_research(
+            asknews_research = await AskNewsSearcher().get_formatted_deep_research(
                 research_prompt,
                 sources=["asknews", "google"],
                 search_depth=2,
                 max_depth=4,
             )
-            logger.info(f"Found AskNews research for {question.page_url}:\n{AskNews_research}")            
+            logger.info(f"Found AskNews research for {question.page_url}:\n{asknews_research}")            
                                  
             default_research = await default_researcher.invoke(research_prompt)
             logger.info(f"Found default research for {question.page_url}:\n{default_research}")         
