@@ -149,7 +149,7 @@ class FallTemplateBot2025(ForecastBot):
                 stream=True,
                 search_depth=2,
                 sources=["asknews", "google"],
-                max_depth=4,
+                max_depth=2,
                 return_sources=True
                 )
 
