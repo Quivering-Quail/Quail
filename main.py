@@ -134,7 +134,7 @@ class FallTemplateBot2025(ForecastBot):
             )
                                   
             asknews_research = await AskNewsSearcher().get_formatted_deep_research(
-                model="meta-llama/Llama-4-Maverick-17B-128E-Instruct",
+                messages="meta-llama/Llama-4-Maverick-17B-128E-Instruct",
                 prompt=research_prompt,
                 sources=["asknews", "google"],
                 search_depth=2,
