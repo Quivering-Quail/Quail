@@ -32,7 +32,7 @@ logger = logging.getLogger(__name__)
 class FallTemplateBot2025(ForecastBot):
 
     _max_concurrent_questions = (
-        3
+        1
     )
     _concurrency_limiter = asyncio.Semaphore(_max_concurrent_questions)
 
