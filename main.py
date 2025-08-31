@@ -2,7 +2,6 @@ import argparse
 import asyncio
 import logging
 import random
-import os
 from datetime import datetime, timedelta
 from dateutil.relativedelta import relativedelta
 from typing import Literal
@@ -125,32 +124,29 @@ class FallTemplateBot2025(ForecastBot):
                 - Present the output in structured sections (e.g., *Key Findings*, *Supporting Evidence*, *Counterarguments*, *Research Gaps*).  
                 - Your synthesis should be approximately 300-500 words and distil the most decision-relevant insights for a forecaster.  
 
-                The News research is as follows:
-                {asknews_research}
-
-                The general research is as follows:
+                The research is as follows:
                 {default_research}
             """
             )
 
-            sdk = AsyncAskNewsSDK(
-                client_id = "be48f7c8-7b3c-4da5-bdc2-3bba571f1a2b",
-                client_secret = "iokYQs1_hxouNSUghDpAJhyq85",
-                scopes=["chat", "news", "stories"]
-                )
-            asknews_research = await sdk.chat.get_deep_news(
-                messages=[
-                    {
-                    "role":"user",
-                    "content": research_prompt
-                    }
-                    ],
-                model="meta-llama/Llama-4-Maverick-17B-128E-Instruct",
-                #stream=True,
-                search_depth=2,
-                #sources=["asknews"],
-                max_depth=2,
-                )
+            #sdk = AsyncAskNewsSDK(
+            #    client_id = "be48f7c8-7b3c-4da5-bdc2-3bba571f1a2b",
+            #    client_secret = "iokYQs1_hxouNSUghDpAJhyq85",
+            #    scopes=["chat", "news", "stories"]
+            #    )
+            #asknews_research = await sdk.chat.get_deep_news(
+            #    messages=[
+            #        {
+            #        "role":"user",
+            #        "content": research_prompt
+            #        }
+            #        ],
+            #    model="meta-llama/Llama-4-Maverick-17B-128E-Instruct",
+            #    #stream=True,
+            #    search_depth=2,
+            #    #sources=["asknews"],
+            #    max_depth=2,
+            #    )
 
             #asknews_research = await AskNewsSearcher().get_formatted_deep_research(
             #    model="meta-llama/Llama-4-Maverick-17B-128E-Instruct",
@@ -159,7 +155,7 @@ class FallTemplateBot2025(ForecastBot):
             #    search_depth=2,
             #    max_depth=4,
             #)
-            logger.info(f"Found AskNews research for {question.page_url}:\n{asknews_research}")            
+            #logger.info(f"Found AskNews research for {question.page_url}:\n{asknews_research}")            
                                  
             default_research = await default_researcher.invoke(research_prompt)
             logger.info(f"Found default research for {question.page_url}:\n{default_research}")         
