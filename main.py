@@ -222,7 +222,7 @@ class FallTemplateBot2025(ForecastBot):
             4. Brief mention that a statistical method was used to produce a probability density function  
             5. The last thing you write is your final answer (from Step 3) in this exact format:
             "
-            Probability: ZZ%", 0-100
+            Probability: ZZ%", 0.1-99.9
             "
             """
         )
@@ -231,7 +231,7 @@ class FallTemplateBot2025(ForecastBot):
         binary_prediction: BinaryPrediction = await structure_output(
             reasoning, BinaryPrediction, model=self.get_llm("parser", "llm")
         )
-        decimal_pred = max(0.00, min(1.00, binary_prediction.prediction_in_decimal))
+        decimal_pred = max(0.001, min(0.999, binary_prediction.prediction_in_decimal))
 
         logger.info(
             f"Forecasted URL {question.page_url} with prediction: {decimal_pred}"
