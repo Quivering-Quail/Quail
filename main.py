@@ -134,8 +134,8 @@ class FallTemplateBot2025(ForecastBot):
             )
 
             sdk = AsyncAskNewsSDK(
-                client_id = os.environ["ASKNEWS_CLIENT_ID"]
-                client_secret = os.environ["ASKNEWS_API_KEY"]
+                client_id = os.environ["ASKNEWS_CLIENT_ID"],
+                client_secret = os.environ["ASKNEWS_API_KEY"],
                 scopes=["chat", "news", "stories"]
                 )
             asknews_research = await sdk.chat.get_deep_news(
