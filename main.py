@@ -423,7 +423,7 @@ if __name__ == "__main__":
         #         temperature=0.3,
                 
              "summarizer": "openrouter/openai/gpt-4o-mini",
-             "researcher": GeneralLlm(model="asknews/deep-research/meta-llama/Llama-4-Maverick-17B-128E-Instruct"),
+             "researcher": GeneralLlm(model="asknews/deepnews/meta-llama/Llama-4-Maverick-17B-128E-Instruct"),
              "parser": "openrouter/openai/gpt-4o-mini",
         },
     )
