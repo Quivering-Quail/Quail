@@ -147,7 +147,7 @@ class FallTemplateBot2025(ForecastBot):
                 model="meta-llama/Llama-4-Maverick-17B-128E-Instruct",
                 stream=True,
                 search_depth=2,
-                sources=["asknews", "google"]
+                sources=["asknews", "google"],
                 max_depth=4,
                 return_sources=True
                 )
