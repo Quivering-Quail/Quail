@@ -2,6 +2,8 @@ import argparse
 import asyncio
 import logging
 import random
+import os
+import requests
 from datetime import datetime, timedelta
 from dateutil.relativedelta import relativedelta
 from typing import Literal
@@ -132,6 +134,7 @@ class FallTemplateBot2025(ForecastBot):
             )
                                   
             asknews_research = await AskNewsSearcher().get_formatted_deep_research(
+                model="meta-llama/Llama-4-Maverick-17B-128E-Instruct",
                 research_prompt,
                 sources=["asknews", "google"],
                 search_depth=2,
@@ -423,7 +426,7 @@ if __name__ == "__main__":
         #         temperature=0.3,
                 
              "summarizer": "openrouter/openai/gpt-4o-mini",
-             "researcher": GeneralLlm(model="asknews/deepnews/meta-llama/Llama-4-Maverick-17B-128E-Instruct"),
+             "researcher": "asknews/deepn-research/low",
              "parser": "openrouter/openai/gpt-4o-mini",
         },
     )
