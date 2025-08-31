@@ -2,6 +2,7 @@ import argparse
 import asyncio
 import logging
 import random
+import os
 from datetime import datetime, timedelta
 from dateutil.relativedelta import relativedelta
 from typing import Literal
@@ -133,8 +134,8 @@ class FallTemplateBot2025(ForecastBot):
             )
 
             sdk = AsyncAskNewsSDK(
-                client_id="your_client_id",
-                client_secret="your_client_secret",
+                client_id = os.environ["ASKNEWS_CLIENT_ID"]
+                client_secret = os.environ["ASKNEWS_API_KEY"]
                 scopes=["chat", "news", "stories"]
                 )
             asknews_research = await sdk.chat.get_deep_news(
