@@ -2,11 +2,10 @@ import argparse
 import asyncio
 import logging
 import random
-import os
-import requests
 from datetime import datetime, timedelta
 from dateutil.relativedelta import relativedelta
 from typing import Literal
+from asknews_sdk import AsyncAskNewsSDK
 
 from forecasting_tools import (
     AskNewsSearcher,
@@ -132,14 +131,33 @@ class FallTemplateBot2025(ForecastBot):
                 {default_research}
             """
             )
-                                  
-            asknews_research = await AskNewsSearcher().get_formatted_deep_research(
-                messages="meta-llama/Llama-4-Maverick-17B-128E-Instruct",
-                prompt=research_prompt,
-                sources=["asknews", "google"],
+
+            sdk = AsyncAskNewsSDK(
+                client_id="your_client_id",
+                client_secret="your_client_secret",
+                scopes=["chat", "news", "stories"]
+                )
+            asknews_research = await sdk.chat.get_deep_news(
+                messages=[
+                {
+                "content": research_prompt
+                }
+                ],
+                model="meta-llama/Llama-4-Maverick-17B-128E-Instruct",
+                stream=True,
                 search_depth=2,
+                sources=["asknews", "google"]
                 max_depth=4,
-            )
+                return_sources=True
+                )
+
+            #asknews_research = await AskNewsSearcher().get_formatted_deep_research(
+            #    model="meta-llama/Llama-4-Maverick-17B-128E-Instruct",
+            #    messages=research_prompt,
+            #    sources=["asknews", "google"],
+            #    search_depth=2,
+            #    max_depth=4,
+            #)
             logger.info(f"Found AskNews research for {question.page_url}:\n{asknews_research}")            
                                  
             default_research = await default_researcher.invoke(research_prompt)
