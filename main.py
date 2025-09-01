@@ -167,7 +167,7 @@ class FallTemplateBot2025(ForecastBot):
         self, question: BinaryQuestion, research: str
     ) -> ReasonedPrediction[float]:
 
-        candidates = self.generate_candidate_dates(datetime.now())
+        candidates = await self.generate_candidate_dates(datetime.now())
         candidate_table = "\n".join(
         f"- {label}: {date.strftime('%Y-%m-%d')}" for label, date in candidates
         )
