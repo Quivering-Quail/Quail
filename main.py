@@ -222,7 +222,7 @@ class FallTemplateBot2025(ForecastBot):
             4. Brief mention that a statistical method was used to produce a probability density function  
             5. The last thing you write is your final answer (from Step 3) in this exact format:
             "
-            Probability: ZZ%", 0.1-99.9
+            Probability: ZZ%", [This must be a value between 0.1% and 99.9% - adjust 0% or 100% to 0.1% or 99.9%]
             "
             """
         )
