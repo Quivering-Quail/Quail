@@ -419,6 +419,43 @@ async def _run_forecast_with_llm(
     
         return await asyncio.gather(*[run(k) for k in model_keys])
 
+    async def run_research(self, question: MetaculusQuestion, summary: str) -> str:
+        research_bundle = await self.run_research_bundle(question, summary)
+        return await self.consolidate_research(summary, research_bundle)
+
+    async def _run_forecast_on_binary(
+        self, question: BinaryQuestion, research: str
+    ) -> ReasonedPrediction[float]:
+        summary = await self.parse_and_summarize_question(question)
+        return await self._run_forecast_on_binary_with_llm(
+            question=question,
+            research=research,
+            summary=summary,
+            llm=self.get_llm("forecast_gpt52", "llm"),
+        )
+
+    async def _run_forecast_on_multiple_choice(
+        self, question: MultipleChoiceQuestion, research: str
+    ) -> ReasonedPrediction[PredictedOptionList]:
+        summary = await self.parse_and_summarize_question(question)
+        return await self._run_forecast_on_multiple_choice_with_llm(
+            question=question,
+            research=research,
+            summary=summary,
+            llm=self.get_llm("forecast_gpt52", "llm"),
+        )
+
+    async def _run_forecast_on_numeric(
+        self, question: NumericQuestion, research: str
+    ) -> ReasonedPrediction[NumericDistribution]:
+        summary = await self.parse_and_summarize_question(question)
+        return await self._run_forecast_on_numeric_with_llm(
+            question=question,
+            research=research,
+            summary=summary,
+            llm=self.get_llm("forecast_gpt52", "llm"),
+        )
+    
     async def _forecast_single_question(
         self, question: MetaculusQuestion
     ) -> ReasonedPrediction:
