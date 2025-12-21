@@ -67,13 +67,18 @@ class FallTemplateBot2025(ForecastBot):
     # -----------------------------
     async def run_research(self, question) -> str:
         summary = await self.parse_and_summarize_question(question)
-        research_bundle = await self.run_research_bundle(question, summary)
+        research_bundle = await self.run_research_bundle(summary)
         return await self.consolidate_research(summary, research_bundle)
 
+    # -----------------------------
+    # 2a. Implement Multi-Source Research
+    # -----------------------------
+    
+    async def run_research_bundle(self, summary) -> dict:
         research_prompt = clean_indents(f"""
         You are conducting research to support a superforecaster answer the question below.
         Do NOT forecast.
-
+    
         Emphasize:
         - Explicitly search for similar or related questions on:
           • Metaculus
@@ -94,11 +99,11 @@ class FallTemplateBot2025(ForecastBot):
         - Recent developments
         - The pathway to positive resolution (where relevant)
         - Evidence for and against other alternative outcomes (where relevant)
-
+    
         Question summary:
         {summary}
         """)
-
+    
         tasks = {
             "perplexity": run("research_perplexity", research_prompt),
             "asknews": run("research_asknews", research_prompt),
@@ -106,8 +111,9 @@ class FallTemplateBot2025(ForecastBot):
             "claude": run("research_claude", research_prompt),
             "deepseek": run("research_deepseek", research_prompt),
         }
+    
         return {k: await v for k, v in tasks.items()}
-
+    
     # -----------------------------
     # 3. Consolidate Research
     # -----------------------------
