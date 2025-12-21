@@ -133,29 +133,29 @@ class FallTemplateBot2025(ForecastBot):
     # -----------------------------
     # 4. Multi-Model Forecasting
     # -----------------------------
-async def _run_forecast_with_llm(
-    self,
-    question,
-    research,
-    summary,
-    llm_key: str,
-):
-    llm = self.get_llm(llm_key, "llm")
+    async def _run_forecast_with_llm(
+        self,
+        question,
+        research,
+        summary,
+        llm_key: str,
+    ):
+        llm = self.get_llm(llm_key, "llm")
 
-    if isinstance(question, BinaryQuestion):
-        return await self._run_forecast_on_binary_with_llm(
-            question, research, summary, llm
-        )
-    elif isinstance(question, NumericQuestion):
-        return await self._run_forecast_on_numeric_with_llm(
-            question, research, summary, llm
-        )
-    elif isinstance(question, MultipleChoiceQuestion):
-        return await self._run_forecast_on_multiple_choice_with_llm(
-            question, research, summary, llm
-        )
-    else:
-        raise ValueError("Unsupported question type")
+        if isinstance(question, BinaryQuestion):
+            return await self._run_forecast_on_binary_with_llm(
+                question, research, summary, llm
+            )
+        elif isinstance(question, NumericQuestion):
+            return await self._run_forecast_on_numeric_with_llm(
+                question, research, summary, llm
+            )
+        elif isinstance(question, MultipleChoiceQuestion):
+            return await self._run_forecast_on_multiple_choice_with_llm(
+                question, research, summary, llm
+            )
+        else:
+            raise ValueError("Unsupported question type")
 
     # -----------------------------
     # 5. Median + Challenger Synthesis
@@ -166,7 +166,7 @@ async def _run_forecast_with_llm(
         forecast_summaries = "\n".join(
             f"- Model {i+1}: {f.prediction_value}"
             for i, f in enumerate(forecasts)
-        )
+    )
 
         challenger_prompt = clean_indents(f"""
         You are an adversarial forecaster.
@@ -409,13 +409,13 @@ async def _run_forecast_with_llm(
             "forecast_grok",
         ]
     
-        async def run(model_key):
-            return await self._run_forecast_with_llm(
-                question=question,
-                research=research,
-                summary=summary,
-                llm_key=model_key,
-            )
+    async def run(model_key):
+        return await self._run_forecast_with_llm(
+            question=question,
+            research=research,
+            summary=summary,
+            llm_key=model_key,
+        )
     
         return await asyncio.gather(*[run(k) for k in model_keys])
 
