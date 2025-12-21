@@ -94,7 +94,7 @@ class FallTemplateBot2025(ForecastBot):
 
         llms = [
             "research_perplexity",
-            "research_asknews",
+            "research_llama",
             "research_gemini",
             "research_claude",
             "research_deepseek",
@@ -349,25 +349,25 @@ async def main():
         llms={
             "parser": GeneralLlm("openrouter/openai/gpt-4o-mini"),
 
-            "research_perplexity": GeneralLlm("perplexity/sonar-pro"),
-            "research_asknews": GeneralLlm("asknews/deepn-research/low"),
+            "research_perplexity": GeneralLlm("openrouter/perplexity/sonar-pro-search"),
+            "research_llama": GeneralLlm("openrouter/meta-llama/llama-3.1-8b-instruct"),
             "research_gemini": GeneralLlm("openrouter/google/gemini-2.5-pro"),
-            "research_claude": GeneralLlm("openrouter/anthropic/claude-4.5-sonnet"),
-            "research_deepseek": GeneralLlm("openrouter/deepseek/deepseek-r1"),
+            "research_claude": GeneralLlm("openrouter/anthropic/claude-sonnet-4.5"),
+            "research_deepseek": GeneralLlm("openrouter/deepseek/deepseek-v3.2"),
 
-            "forecast_gpt52": GeneralLlm("openrouter/openai/gpt-5.2-thinking"),
-            "forecast_claude": GeneralLlm("openrouter/anthropic/claude-4.5-opus"),
+            "forecast_gpt52": GeneralLlm("openrouter/openai/gpt-5.2-pro"),
+            "forecast_claude": GeneralLlm("openrouter/anthropic/claude-opus-4.5"),
             "forecast_gemini": GeneralLlm("openrouter/google/gemini-2.5-pro"),
-            "forecast_deepseek": GeneralLlm("openrouter/deepseek/deepseek-r1"),
-            "forecast_qwen": GeneralLlm("openrouter/qwen/qwen3-thinking"),
-            "forecast_mistral": GeneralLlm("openrouter/mistral/mistral-large-2"),
-            "forecast_grok": GeneralLlm("openrouter/xai/grok-2"),
+            "forecast_deepseek": GeneralLlm("openrouter/deepseek/deepseek-r1-0528-qwen3-8b"),
+            "forecast_qwen": GeneralLlm("openrouter/qwen/qwen3-vl-235b-a22b-thinking"),
+            "forecast_mistral": GeneralLlm("openrouter/mistralai/mistral-large"),
+            "forecast_grok": GeneralLlm("openrouter/x-ai/grok-4"),
 
-            "challenger_grok": GeneralLlm("openrouter/xai/grok-2"),
-            "challenger_qwen": GeneralLlm("openrouter/qwen/qwen3-thinking"),
-            "challenger_deepseek": GeneralLlm("openrouter/deepseek/deepseek-r1"),
+            "challenger_grok": GeneralLlm("openrouter/x-ai/grok-4"),
+            "challenger_qwen": GeneralLlm("openrouter/qwen/qwen3-vl-235b-a22b-thinking"),
+            "challenger_deepseek": GeneralLlm("openrouter/deepseek/deepseek-r1-0528-qwen3-8b"),
 
-            "synthesizer": GeneralLlm("openrouter/openai/gpt-5.2-thinking"),
+            "synthesizer": GeneralLlm("openrouter/openai/openai/gpt-5.2-pro"),
         }
     )
 
