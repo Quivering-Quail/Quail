@@ -23,10 +23,8 @@ from forecasting_tools import (
 
 logger = logging.getLogger(__name__)
 
-
 class FallTemplateBot2025(ForecastBot):
     """
-    Workflow:
     1) Parse & summarize question
     2) Parallel research → consolidated research
     3) Parallel forecasts → median synthesis
@@ -37,7 +35,7 @@ class FallTemplateBot2025(ForecastBot):
     _concurrency_limiter = asyncio.Semaphore(_max_concurrent_questions)
 
     # ============================================================
-    # 1. PARSE & SUMMARIZE QUESTION
+    # 1. PARSE & SUMMARIZE
     # ============================================================
 
     async def parse_and_summarize_question(self, question: MetaculusQuestion) -> str:
@@ -75,7 +73,7 @@ class FallTemplateBot2025(ForecastBot):
         return consolidated
 
     async def _run_research_bundle(self, summary: str) -> dict[str, str]:
-        research_prompt = clean_indents(f"""
+        prompt = clean_indents(f"""
         You are conducting background research to support forecasting.
         Do NOT forecast.
 
@@ -91,9 +89,9 @@ class FallTemplateBot2025(ForecastBot):
         """)
 
         async def call(llm_key: str):
-            return await self.get_llm(llm_key, "llm").invoke(research_prompt)
+            return await self.get_llm(llm_key, "llm").invoke(prompt)
 
-        research_llms = [
+        llms = [
             "research_perplexity",
             "research_asknews",
             "research_gemini",
@@ -101,8 +99,8 @@ class FallTemplateBot2025(ForecastBot):
             "research_deepseek",
         ]
 
-        results = await asyncio.gather(*[call(k) for k in research_llms])
-        return dict(zip(research_llms, results))
+        results = await asyncio.gather(*[call(k) for k in llms])
+        return dict(zip(llms, results))
 
     async def _consolidate_research(self, summary: str, bundle: dict[str, str]) -> str:
         prompt = clean_indents(f"""
@@ -124,7 +122,7 @@ class FallTemplateBot2025(ForecastBot):
         return await self.get_llm("synthesizer", "llm").invoke(prompt)
 
     # ============================================================
-    # 3. FORECASTING
+    # 3. FORECASTING (framework hooks)
     # ============================================================
 
     async def _run_forecast_on_binary(self, question: BinaryQuestion, research: str) -> ReasonedPrediction[float]:
@@ -137,21 +135,15 @@ class FallTemplateBot2025(ForecastBot):
         return await self._forecast_manager(question, research)
 
     # ============================================================
-    # FORECAST MANAGER (ALL QUESTION TYPES)
+    # 3a–3c. FORECAST MANAGER
     # ============================================================
 
     async def _forecast_manager(self, question: MetaculusQuestion, research: str):
         summary = await self.parse_and_summarize_question(question)
 
-        # 3a) Run all forecasters in parallel
         forecasts = await self._run_forecasters(question, summary, research)
-
-        # 3b) Synthesize draft forecast report (median anchor)
         draft = await self._synthesize_forecast(forecasts, summary, research)
-
-        # 4) Challenger critique → finalize
         final = await self._run_challengers_and_finalize(draft, forecasts, summary, research, question)
-
         return final
 
     async def _run_forecasters(self, question, summary, research):
@@ -175,6 +167,78 @@ class FallTemplateBot2025(ForecastBot):
 
         return await asyncio.gather(*[call(k) for k in forecasters])
 
+    # ============================================================
+    # 3b. Forecasting per LLM implementations
+    # ============================================================
+
+    async def _run_forecast_on_binary_with_llm(self, question, research, summary, llm):
+        prompt = clean_indents(f"""
+        Forecast the probability of the following binary question:
+        {question.question_text}
+
+        Question summary:
+        {summary}
+
+        Research:
+        {research}
+
+        Output in exact format:
+        Probability: ZZ% (0.1%–99.9%)
+        """)
+        reasoning = await llm.invoke(prompt)
+        parsed: BinaryPrediction = await structure_output(reasoning, BinaryPrediction, self.get_llm("parser", "llm"))
+        decimal_pred = max(0.001, min(0.999, parsed.prediction_in_decimal))
+        return ReasonedPrediction(prediction_value=decimal_pred, reasoning=reasoning)
+
+    async def _run_forecast_on_numeric_with_llm(self, question, research, summary, llm):
+        prompt = clean_indents(f"""
+        Forecast the numeric outcomes for the following question:
+        {question.question_text}
+
+        Question summary:
+        {summary}
+
+        Research:
+        {research}
+
+        Output percentiles (10,20,40,60,80,90):
+        Percentile 10: XX
+        Percentile 20: XX
+        Percentile 40: XX
+        Percentile 60: XX
+        Percentile 80: XX
+        Percentile 90: XX
+        """)
+        reasoning = await llm.invoke(prompt)
+        percentiles: list[Percentile] = await structure_output(reasoning, list[Percentile], self.get_llm("parser", "llm"))
+        dist = NumericDistribution.from_question(percentiles, question)
+        return ReasonedPrediction(prediction_value=dist, reasoning=reasoning)
+
+    async def _run_forecast_on_multiple_choice_with_llm(self, question, research, summary, llm):
+        prompt = clean_indents(f"""
+        Forecast the following multiple-choice question:
+        {question.question_text}
+
+        Question summary:
+        {summary}
+
+        Research:
+        {research}
+
+        Output probabilities for each option in exact format:
+        Option_A: XX
+        Option_B: XX
+        ...
+        Option_N: XX
+        """)
+        reasoning = await llm.invoke(prompt)
+        predicted: PredictedOptionList = await structure_output(reasoning, PredictedOptionList, self.get_llm("parser", "llm"))
+        return ReasonedPrediction(prediction_value=predicted, reasoning=reasoning)
+
+    # ============================================================
+    # 3c. SYNTHESIS (median anchor)
+    # ============================================================
+
     async def _synthesize_forecast(self, forecasts, summary, research) -> str:
         probs = [f.prediction_value for f in forecasts]
         prompt = clean_indents(f"""
@@ -194,7 +258,7 @@ class FallTemplateBot2025(ForecastBot):
     # 4. CHALLENGERS → FINAL DECISION
     # ============================================================
 
-    async def _run_challengers_and_finalize(self, draft: str, forecasts, summary, research, question):
+    async def _run_challengers_and_finalize(self, draft, forecasts, summary, research, question):
         challenger_prompt = clean_indents(f"""
         You are an adversarial forecaster.
         Critique the following forecast:
@@ -216,7 +280,8 @@ class FallTemplateBot2025(ForecastBot):
         ]
 
         critiques = await asyncio.gather(*[
-            self.get_llm(c, "llm").invoke(challenger_prompt) for c in challengers
+            self.get_llm(c, "llm").invoke(challenger_prompt)
+            for c in challengers
         ])
 
         final_prompt = clean_indents(f"""
@@ -234,7 +299,7 @@ class FallTemplateBot2025(ForecastBot):
 
         final_text = await self.get_llm("synthesizer", "llm").invoke(final_prompt)
 
-        # Structured output depending on question type
+        # Structured output based on question type
         if isinstance(question, BinaryQuestion):
             parsed = await structure_output(final_text, BinaryPrediction, self.get_llm("parser", "llm"))
             return ReasonedPrediction(prediction_value=parsed.prediction_in_decimal, reasoning=final_text)
@@ -247,10 +312,15 @@ class FallTemplateBot2025(ForecastBot):
         parsed = await structure_output(final_text, PredictedOptionList, self.get_llm("parser", "llm"))
         return ReasonedPrediction(prediction_value=parsed, reasoning=final_text)
 
+# ============================================================
+# MAIN
+# ============================================================
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
-    logging.getLogger("LiteLLM").setLevel(logging.WARNING)
+    litellm_logger = logging.getLogger("LiteLLM")
+    litellm_logger.setLevel(logging.WARNING)
+    litellm_logger.propagate = False
 
     parser = argparse.ArgumentParser(description="Run the FallTemplateBot2025 forecasting system")
     parser.add_argument("--mode", type=str, choices=["tournament", "metaculus_cup", "test_questions"], default="tournament")
@@ -296,7 +366,7 @@ if __name__ == "__main__":
     elif run_mode == "metaculus_cup":
         template_bot.skip_previously_forecasted_questions = False
         forecast_reports = asyncio.run(template_bot.forecast_on_tournament(MetaculusApi.CURRENT_METACULUS_CUP_ID, return_exceptions=True))
-    elif run_mode == "test_questions":
+    else:
         EXAMPLE_QUESTIONS = [
             "https://www.metaculus.com/questions/578/human-extinction-by-2100/",
             "https://www.metaculus.com/questions/14333/age-of-oldest-human-as-of-2100/",
