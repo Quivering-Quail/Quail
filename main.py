@@ -460,24 +460,24 @@ class FallTemplateBot2025(ForecastBot):
     async def _forecast_single_question(
         self, question: MetaculusQuestion
     ):   
-    async with self._concurrency_limiter:
-        summary = await self.parse_and_summarize_question(question)
-    
-        research_bundle = await self.run_research_bundle(question, summary)
-    
-        consolidated_research = await self.consolidate_research(
-             summary, research_bundle
-        )
-    
-        forecasts = await self.generate_forecasts(
-            question, summary, consolidated_research
-        )
-    
-        final_prediction = await self.synthesize_forecast(
-             forecasts, summary, consolidated_research
-        )
-    
-        return final_prediction
+        async with self._concurrency_limiter:
+            summary = await self.parse_and_summarize_question(question)
+        
+            research_bundle = await self.run_research_bundle(question, summary)
+        
+            consolidated_research = await self.consolidate_research(
+                 summary, research_bundle
+            )
+        
+            forecasts = await self.generate_forecasts(
+                question, summary, consolidated_research
+            )
+        
+            final_prediction = await self.synthesize_forecast(
+                 forecasts, summary, consolidated_research
+            )
+        
+            return final_prediction
 
 if __name__ == "__main__":
     logging.basicConfig(
