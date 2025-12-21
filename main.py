@@ -456,7 +456,10 @@ class FallTemplateBot2025(ForecastBot):
             summary=summary,
             llm=self.get_llm("synthesizer"),
         )
-       
+    
+    async def _forecast_single_question(
+        self, question: MetaculusQuestion
+    ):   
     async with self._concurrency_limiter:
         summary = await self.parse_and_summarize_question(question)
     
