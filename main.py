@@ -420,10 +420,6 @@ class FallTemplateBot2025(ForecastBot):
     
         return await asyncio.gather(*[run(k) for k in model_keys])
 
-    async def run_research(self, question: MetaculusQuestion, summary: str) -> str:
-        research_bundle = await self.run_research_bundle(question, summary)
-        return await self.consolidate_research(summary, research_bundle)
-
     async def _run_forecast_on_binary(
         self, question: BinaryQuestion, research: str
     ) -> ReasonedPrediction[float]:
