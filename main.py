@@ -1,6 +1,7 @@
 import argparse
 import asyncio
 import logging
+import json
 from datetime import datetime
 from typing import Literal
 
@@ -103,6 +104,7 @@ class FallTemplateBot2025(ForecastBot):
         return dict(zip(llms, results))
 
     async def _consolidate_research(self, summary: str, bundle: dict[str, str]) -> str:
+        research_text = json.dumps(bundle, indent=2)  # prettier formatting
         prompt = clean_indents(f"""
         You are synthesizing research for forecasting.
         Do NOT forecast.
@@ -111,7 +113,7 @@ class FallTemplateBot2025(ForecastBot):
         {summary}
 
         Research reports:
-        {bundle}
+        {research_text}
 
         Produce:
         1. Base rates
@@ -126,13 +128,16 @@ class FallTemplateBot2025(ForecastBot):
     # ============================================================
 
     async def _run_forecast_on_binary(self, question: BinaryQuestion, research: str) -> ReasonedPrediction[float]:
-        return await self._forecast_manager(question, research)
+        async with self._concurrency_limiter:
+            return await self._forecast_manager(question, research)
 
     async def _run_forecast_on_numeric(self, question: NumericQuestion, research: str) -> ReasonedPrediction[NumericDistribution]:
-        return await self._forecast_manager(question, research)
+        async with self._concurrency_limiter:
+            return await self._forecast_manager(question, research)
 
     async def _run_forecast_on_multiple_choice(self, question: MultipleChoiceQuestion, research: str) -> ReasonedPrediction[PredictedOptionList]:
-        return await self._forecast_manager(question, research)
+        async with self._concurrency_limiter:
+            return await self._forecast_manager(question, research)
 
     # ============================================================
     # 3a–3c. FORECAST MANAGER
@@ -240,12 +245,20 @@ class FallTemplateBot2025(ForecastBot):
     # ============================================================
 
     async def _synthesize_forecast(self, forecasts, summary, research) -> str:
-        probs = [f.prediction_value for f in forecasts]
+        # Serialize complex predictions
+        def serialize(pred):
+            if isinstance(pred, NumericDistribution):
+                return pred.to_dict()  # assuming NumericDistribution has to_dict()
+            if isinstance(pred, PredictedOptionList):
+                return pred.to_dict()  # assuming PredictedOptionList has to_dict()
+            return pred
+
+        probs = [serialize(f.prediction_value) for f in forecasts]
         prompt = clean_indents(f"""
         You are the lead superforecaster.
 
         Forecasts:
-        {probs}
+        {json.dumps(probs, indent=2)}
 
         Anchor on the median forecast.
         Adjust only if justified.
@@ -291,7 +304,7 @@ class FallTemplateBot2025(ForecastBot):
         {draft}
 
         Challenger critiques:
-        {critiques}
+        {json.dumps(critiques, indent=2)}
 
         Decide whether to update the forecast.
         Produce the FINAL forecast in the correct format.
@@ -299,7 +312,6 @@ class FallTemplateBot2025(ForecastBot):
 
         final_text = await self.get_llm("synthesizer", "llm").invoke(final_prompt)
 
-        # Structured output based on question type
         if isinstance(question, BinaryQuestion):
             parsed = await structure_output(final_text, BinaryPrediction, self.get_llm("parser", "llm"))
             return ReasonedPrediction(prediction_value=parsed.prediction_in_decimal, reasoning=final_text)
@@ -316,7 +328,7 @@ class FallTemplateBot2025(ForecastBot):
 # MAIN
 # ============================================================
 
-if __name__ == "__main__":
+async def main():
     logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
     litellm_logger = logging.getLogger("LiteLLM")
     litellm_logger.setLevel(logging.WARNING)
@@ -360,12 +372,12 @@ if __name__ == "__main__":
     )
 
     if run_mode == "tournament":
-        seasonal_tournament_reports = asyncio.run(template_bot.forecast_on_tournament(MetaculusApi.CURRENT_AI_COMPETITION_ID, return_exceptions=True))
-        minibench_reports = asyncio.run(template_bot.forecast_on_tournament(MetaculusApi.CURRENT_MINIBENCH_ID, return_exceptions=True))
+        seasonal_tournament_reports = await template_bot.forecast_on_tournament(MetaculusApi.CURRENT_AI_COMPETITION_ID, return_exceptions=True)
+        minibench_reports = await template_bot.forecast_on_tournament(MetaculusApi.CURRENT_MINIBENCH_ID, return_exceptions=True)
         forecast_reports = seasonal_tournament_reports + minibench_reports
     elif run_mode == "metaculus_cup":
         template_bot.skip_previously_forecasted_questions = False
-        forecast_reports = asyncio.run(template_bot.forecast_on_tournament(MetaculusApi.CURRENT_METACULUS_CUP_ID, return_exceptions=True))
+        forecast_reports = await template_bot.forecast_on_tournament(MetaculusApi.CURRENT_METACULUS_CUP_ID, return_exceptions=True)
     else:
         EXAMPLE_QUESTIONS = [
             "https://www.metaculus.com/questions/578/human-extinction-by-2100/",
@@ -375,6 +387,9 @@ if __name__ == "__main__":
         ]
         template_bot.skip_previously_forecasted_questions = False
         questions = [MetaculusApi.get_question_by_url(q) for q in EXAMPLE_QUESTIONS]
-        forecast_reports = asyncio.run(template_bot.forecast_questions(questions, return_exceptions=True))
+        forecast_reports = await template_bot.forecast_questions(questions, return_exceptions=True)
 
     template_bot.log_report_summary(forecast_reports)
+
+if __name__ == "__main__":
+    asyncio.run(main())
