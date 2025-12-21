@@ -454,13 +454,9 @@ class FallTemplateBot2025(ForecastBot):
             question=question,
             research=research,
             summary=summary,
-            llm=self.get_llm("forecast_gpt52", "llm"),
+            llm=self.get_llm("synthesizer"),
         )
-    
-    async def _forecast_single_question(
-        self, question: MetaculusQuestion
-    ) -> ReasonedPrediction:
-    
+       
     async with self._concurrency_limiter:
         summary = await self.parse_and_summarize_question(question)
     
