@@ -65,9 +65,10 @@ class FallTemplateBot2025(ForecastBot):
     # -----------------------------
     # 2. Commission Multi-Source Research
     # -----------------------------
-    async def run_research_bundle(self, question, summary) -> dict[str, str]:
-        async def run(model_key, prompt):
-            return await self.get_llm(model_key, "llm").invoke(prompt)
+    async def run_research(self, question) -> str:
+        summary = await self.parse_and_summarize_question(question)
+        research_bundle = await self.run_research_bundle(question, summary)
+        return await self.consolidate_research(summary, research_bundle)
 
         research_prompt = clean_indents(f"""
         You are conducting research to support a superforecaster answer the question below.
@@ -459,24 +460,25 @@ class FallTemplateBot2025(ForecastBot):
     async def _forecast_single_question(
         self, question: MetaculusQuestion
     ) -> ReasonedPrediction:
-        async with self._concurrency_limiter:
-            summary = await self.parse_and_summarize_question(question)
     
-            research_bundle = await self.run_research_bundle(question, summary)
+    async with self._concurrency_limiter:
+        summary = await self.parse_and_summarize_question(question)
     
-            consolidated_research = await self.consolidate_research(
-                summary, research_bundle
-            )
+        research_bundle = await self.run_research_bundle(question, summary)
     
-            forecasts = await self.generate_forecasts(
-                question, summary, consolidated_research
-            )
+        consolidated_research = await self.consolidate_research(
+             summary, research_bundle
+        )
     
-            final_prediction = await self.synthesize_forecast(
-                forecasts, summary, consolidated_research
-            )
+        forecasts = await self.generate_forecasts(
+            question, summary, consolidated_research
+        )
     
-            return final_prediction
+        final_prediction = await self.synthesize_forecast(
+             forecasts, summary, consolidated_research
+        )
+    
+        return final_prediction
 
 if __name__ == "__main__":
     logging.basicConfig(
