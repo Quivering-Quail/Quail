@@ -367,7 +367,7 @@ async def main():
             "challenger_qwen": GeneralLlm("openrouter/qwen/qwen3-vl-235b-a22b-thinking"),
             "challenger_deepseek": GeneralLlm("openrouter/deepseek/deepseek-r1-0528-qwen3-8b"),
 
-            "synthesizer": GeneralLlm("openrouter/openai/openai/gpt-5.2-pro"),
+            "synthesizer": GeneralLlm("openrouter/openai/gpt-5.2-pro"),
         }
     )
 
