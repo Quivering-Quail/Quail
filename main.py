@@ -347,15 +347,17 @@ async def main():
         folder_to_save_reports_to=None,
         skip_previously_forecasted_questions=True,
         llms={
+            "default": GeneralLlm("openrouter/openai/gpt-4o"),
+            
             "parser": GeneralLlm("openrouter/openai/gpt-4o-mini"),
 
             "research_perplexity": GeneralLlm("openrouter/perplexity/sonar-pro-search"),
-            "research_llama": GeneralLlm("openrouter/meta-llama/llama-3.1-8b-instruct"),
+            "research_llama": GeneralLlm("openrouter/meta-llama/llama-3.3-70b-instruct"),
             "research_gemini": GeneralLlm("openrouter/google/gemini-2.5-pro"),
             "research_claude": GeneralLlm("openrouter/anthropic/claude-sonnet-4.5"),
             "research_deepseek": GeneralLlm("openrouter/deepseek/deepseek-v3.2"),
 
-            "forecast_gpt52": GeneralLlm("openrouter/openai/gpt-5.2-pro"),
+            "forecast_gpt52": GeneralLlm("openrouter/openai/gpt-5"),
             "forecast_claude": GeneralLlm("openrouter/anthropic/claude-opus-4.5"),
             "forecast_gemini": GeneralLlm("openrouter/google/gemini-2.5-pro"),
             "forecast_deepseek": GeneralLlm("openrouter/deepseek/deepseek-r1-0528-qwen3-8b"),
@@ -367,7 +369,7 @@ async def main():
             "challenger_qwen": GeneralLlm("openrouter/qwen/qwen3-vl-235b-a22b-thinking"),
             "challenger_deepseek": GeneralLlm("openrouter/deepseek/deepseek-r1-0528-qwen3-8b"),
 
-            "synthesizer": GeneralLlm("openrouter/openai/gpt-5.2-pro"),
+            "synthesizer": GeneralLlm("openrouter/openai/gpt-5"),
         }
     )
 
