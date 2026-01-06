@@ -93,11 +93,11 @@ class FallTemplateBot2025(ForecastBot):
             return await self.get_llm(llm_key, "llm").invoke(prompt)
 
         llms = [
-            "research_perplexity",
-            "research_llama",
+            #"research_perplexity",
+            #"research_llama",
             "research_gemini",
-            "research_claude",
-            "research_deepseek",
+            #"research_claude",
+            #"research_deepseek",
         ]
 
         results = await asyncio.gather(*[call(k) for k in llms])
@@ -153,13 +153,13 @@ class FallTemplateBot2025(ForecastBot):
 
     async def _run_forecasters(self, question, summary, research):
         forecasters = [
-            "forecast_gpt52",
-            "forecast_claude",
+            #"forecast_gpt52",
+            #"forecast_claude",
             "forecast_gemini",
             "forecast_deepseek",
-            "forecast_qwen",
-            "forecast_mistral",
-            "forecast_grok",
+            #"forecast_qwen",
+            #"forecast_mistral",
+            #"forecast_grok",
         ]
 
         async def call(llm_key):
@@ -288,8 +288,8 @@ class FallTemplateBot2025(ForecastBot):
 
         challengers = [
             "challenger_grok",
-            "challenger_qwen",
-            "challenger_deepseek",
+            #"challenger_qwen",
+            #"challenger_deepseek",
         ]
 
         critiques = await asyncio.gather(*[
@@ -349,27 +349,27 @@ async def main():
         llms={
             "default": GeneralLlm("openrouter/openai/gpt-4o"),
             
-            "parser": "openrouter/openai/gpt-4o-mini",
+            "parser": GeneralLlm("openrouter/openai/gpt-4o-mini"),
 
-            "research_perplexity": "openrouter/perplexity/sonar-pro-search",
-            "research_llama": "openrouter/meta-llama/llama-3.3-70b-instruct",
-            "research_gemini": "openrouter/google/gemini-2.5-pro",
-            "research_claude": "openrouter/anthropic/claude-sonnet-4.5",
-            "research_deepseek": "openrouter/deepseek/deepseek-v3.2",
+            "research_perplexity": GeneralLlm("openrouter/perplexity/sonar-pro-search"),
+            "research_llama": GeneralLlm("openrouter/meta-llama/llama-3.3-70b-instruct"),
+            "research_gemini": GeneralLlm("openrouter/google/gemini-2.5-pro"),
+            "research_claude": GeneralLlm("openrouter/anthropic/claude-sonnet-4.5"),
+            "research_deepseek": GeneralLlm("openrouter/deepseek/deepseek-v3.2"),
 
-            "forecast_gpt52": "openrouter/openai/gpt-5",
-            "forecast_claude": "openrouter/anthropic/claude-opus-4.5",
-            "forecast_gemini": "openrouter/google/gemini-2.5-pro",
-            "forecast_deepseek": "openrouter/deepseek/deepseek-r1-0528-qwen3-8b",
-            "forecast_qwen": "openrouter/qwen/qwen3-vl-235b-a22b-thinking",
-            "forecast_mistral": "openrouter/mistralai/mistral-large",
-            "forecast_grok": "openrouter/x-ai/grok-4",
+            "forecast_gpt52": GeneralLlm("openrouter/openai/gpt-5"),
+            "forecast_claude": GeneralLlm("openrouter/anthropic/claude-opus-4.5"),
+            "forecast_gemini": GeneralLlm("openrouter/google/gemini-2.5-pro"),
+            "forecast_deepseek": GeneralLlm("openrouter/deepseek/deepseek-r1-0528-qwen3-8b"),
+            "forecast_qwen": GeneralLlm("openrouter/qwen/qwen3-vl-235b-a22b-thinking"),
+            "forecast_mistral": GeneralLlm("openrouter/mistralai/mistral-large"),
+            "forecast_grok": GeneralLlm("openrouter/x-ai/grok-4"),
 
-            "challenger_grok": "openrouter/x-ai/grok-4",
-            "challenger_qwen": "openrouter/qwen/qwen3-vl-235b-a22b-thinking",
-            "challenger_deepseek": "openrouter/deepseek/deepseek-r1-0528-qwen3-8b",
+            "challenger_grok": GeneralLlm("openrouter/x-ai/grok-4"),
+            "challenger_qwen": GeneralLlm("openrouter/qwen/qwen3-vl-235b-a22b-thinking"),
+            "challenger_deepseek": GeneralLlm("openrouter/deepseek/deepseek-r1-0528-qwen3-8b"),
 
-            "synthesizer": "openrouter/openai/gpt-5",
+            "synthesizer": GeneralLlm("openrouter/openai/gpt-4o"),
         }
     )
 
