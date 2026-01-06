@@ -93,11 +93,11 @@ class FallTemplateBot2025(ForecastBot):
             return await self.get_llm(llm_key, "llm").invoke(prompt)
 
         llms = [
-            #"research_perplexity",
-            #"research_llama",
+            "research_perplexity",
+            "research_llama",
             "research_gemini",
-            #"research_claude",
-            #"research_deepseek",
+            "research_claude",
+            "research_deepseek",
         ]
 
         results = await asyncio.gather(*[call(k) for k in llms])
@@ -153,13 +153,13 @@ class FallTemplateBot2025(ForecastBot):
 
     async def _run_forecasters(self, question, summary, research):
         forecasters = [
-            #"forecast_gpt52",
-            #"forecast_claude",
+            "forecast_gpt52",
+            "forecast_claude",
             "forecast_gemini",
             "forecast_deepseek",
-            #"forecast_qwen",
-            #"forecast_mistral",
-            #"forecast_grok",
+            "forecast_qwen",
+            "forecast_mistral",
+            "forecast_grok",
         ]
 
         async def call(llm_key):
@@ -288,8 +288,8 @@ class FallTemplateBot2025(ForecastBot):
 
         challengers = [
             "challenger_grok",
-            #"challenger_qwen",
-            #"challenger_deepseek",
+            "challenger_qwen",
+            "challenger_deepseek",
         ]
 
         critiques = await asyncio.gather(*[
