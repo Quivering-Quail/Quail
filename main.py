@@ -1,3 +1,4 @@
+import os
 import argparse
 import asyncio
 import logging
@@ -23,6 +24,8 @@ from forecasting_tools import (
 )
 
 logger = logging.getLogger(__name__)
+
+print("OPENROUTER_API_KEY =", os.getenv("OPENROUTER_API_KEY")[:10])
 
 class FallTemplateBot2025(ForecastBot):
     """
